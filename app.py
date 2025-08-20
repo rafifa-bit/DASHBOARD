@@ -3,89 +3,59 @@ import pandas as pd
 import plotly.express as px
 
 # Carregar os dados
-file_path = "SAGEP_PROCESSOS PAE3.xlsx"
-df = pd.read_excel(file_path, sheet_name="CONTROLE_ACOPANHAMENTO")
+df = pd.read_excel("SAGEP_PROCESSOS PAE3.xlsx", sheet_name="CONTROLE_ACOPANHAMENTO")
 
-st.title("📊 Dashboard - Controle de Acompanhamento")
+# 🔹 Limpeza básica
+df["Dt. Entrada"] = pd.to_datetime(df["Dt. Entrada"], errors="coerce")
+df["Ano"] = df["Dt. Entrada"].dt.year
+df["Mês"] = df["Dt. Entrada"].dt.month_name()
 
-# ===============================
-# Filtros interativos
-# ===============================
-st.sidebar.header("Filtros")
+# -------------------------------
+# Sidebar (Filtros)
+# -------------------------------
+st.sidebar.title("Filtros")
+anos = st.sidebar.multiselect("Selecione o Ano", options=df["Ano"].dropna().unique(), default=df["Ano"].dropna().unique())
+status = st.sidebar.multiselect("Selecione o Status", options=df["STATUS"].dropna().unique(), default=df["STATUS"].dropna().unique())
+municipios = st.sidebar.multiselect("Selecione o Município", options=df["MUNICÍPIO"].dropna().unique())
 
-anos = df["Ano do protocolo"].dropna().unique()
-ano_selecionado = st.sidebar.multiselect("Selecione o(s) Ano(s):", sorted(anos), default=sorted(anos))
+# Aplicar filtros
+df_filtrado = df[df["Ano"].isin(anos)]
+if status:
+    df_filtrado = df_filtrado[df_filtrado["STATUS"].isin(status)]
+if municipios:
+    df_filtrado = df_filtrado[df_filtrado["MUNICÍPIO"].isin(municipios)]
 
-status_unicos = df["Status Processo"].dropna().unique()
-status_selecionado = st.sidebar.multiselect("Selecione o(s) Status:", sorted(status_unicos), default=sorted(status_unicos))
+# -------------------------------
+# KPIs (indicadores principais)
+# -------------------------------
+st.title("📊 Dashboard de Acompanhamento de Processos")
 
-df_filtrado = df[
-    (df["Ano do protocolo"].isin(ano_selecionado)) &
-    (df["Status Processo"].isin(status_selecionado))
-]
-
-# ===============================
-# KPIs principais
-# ===============================
-st.subheader("📌 Indicadores Gerais")
 col1, col2, col3 = st.columns(3)
+col1.metric("Total de Processos", df_filtrado["Protocolo"].nunique())
+col2.metric("Municípios Atendidos", df_filtrado["MUNICÍPIO"].nunique())
+col3.metric("Assuntos Diferentes", df_filtrado["Assunto"].nunique())
 
-col1.metric("Total de Processos", len(df_filtrado))
-col2.metric("Anos Selecionados", ", ".join(map(str, ano_selecionado)))
-col3.metric("Status Selecionados", len(status_selecionado))
+# -------------------------------
+# Gráficos
+# -------------------------------
 
-# ===============================
-# Visualização 1: Protocolos por Ano
-# ===============================
-st.header("📈 Protocolos por Ano")
+# 1. Evolução mensal
+processos_mes = df_filtrado.groupby("Mês")["Protocolo"].count().reset_index()
+fig1 = px.bar(processos_mes, x="Mês", y="Protocolo", title="Processos por Mês")
+st.plotly_chart(fig1)
 
-fig1 = px.histogram(df_filtrado, x="Ano do protocolo",
-                    title="Distribuição de Protocolos por Ano",
-                    labels={"Ano do protocolo": "Ano", "count": "Quantidade"})
-st.plotly_chart(fig1, use_container_width=True)
+# 2. Status
+fig2 = px.pie(df_filtrado, names="STATUS", title="Distribuição por Status")
+st.plotly_chart(fig2)
 
-# ===============================
-# Visualização 2: Status dos Processos
-# ===============================
-st.header("📊 Status dos Processos")
+# 3. Municípios
+top_municipios = df_filtrado["MUNICÍPIO"].value_counts().nlargest(10).reset_index()
+top_municipios.columns = ["Município", "Total"]
+fig3 = px.bar(top_municipios, x="Município", y="Total", title="Top 10 Municípios")
+st.plotly_chart(fig3)
 
-status_count = df_filtrado["Status Processo"].value_counts().reset_index()
-status_count.columns = ["Status", "Quantidade"]
-
-fig2 = px.bar(status_count, x="Status", y="Quantidade", 
-              title="Distribuição dos Status",
-              labels={"Status": "Status do Processo", "Quantidade": "Nº de Processos"})
-st.plotly_chart(fig2, use_container_width=True)
-
-# ===============================
-# NOVA VISUALIZAÇÃO - Protocolos
-# ===============================
-st.header("🔎 Análise de Protocolos")
-
-protocolos_count = df_filtrado["Protocolo"].value_counts().reset_index()
-protocolos_count.columns = ["Protocolo", "Quantidade"]
-
-fig3 = px.bar(protocolos_count.head(20), 
-             x="Protocolo", 
-             y="Quantidade",
-             title="Top 20 Protocolos mais recorrentes",
-             labels={"Protocolo": "Número do Protocolo", "Quantidade": "Frequência"})
-
-st.plotly_chart(fig3, use_container_width=True)
-
-# ===============================
-# Tabela detalhada
-# ===============================
-st.header("📋 Tabela de Processos Filtrados")
-st.dataframe(df_filtrado[["Ano do protocolo", "Protocolo", "Mês da Entrada", "Dt. Entrada", "Status Processo"]])
-
-
-file_path = "SAGEP_PROCESSOS PAE3.xlsx"
-df = pd.read_excel(file_path, sheet_name="CONTROLE_ACOPANHAMENTO")
-
-# ADICIONE ESTAS DUAS LINHAS PARA VER AS COLUNAS
-st.write("🔍 Colunas encontradas no arquivo Excel:")
-st.write(df.columns.tolist())
-
-st.title("📊 Dashboard - Controle de Acompanhamento")
-# ... resto do seu código ...
+# 4. Assuntos
+top_assuntos = df_filtrado["Assunto"].value_counts().nlargest(10).reset_index()
+top_assuntos.columns = ["Assunto", "Total"]
+fig4 = px.bar(top_assuntos, x="Assunto", y="Total", title="Top 10 Assuntos")
+st.plotly_chart(fig4)
