@@ -9,16 +9,21 @@ st.set_page_config(layout="wide") # Deixa o dashboard usar a largura total da p�
 @st.cache_data
 def load_data():
     df = pd.read_excel("SAGEP_PROCESSOS PAE3.xlsx", sheet_name="CONTROLE_ACOPANHAMENTO")
-    
+
     # Limpeza básica de datas (apenas data de entrada)
     df["Dt. Entrada"] = pd.to_datetime(df["Dt. Entrada"], errors='coerce')
     df.dropna(subset=["Dt. Entrada"], inplace=True) # Remove linhas onde a data de entrada é inválida
-    
+
+    # ==========================================================
+    # NOVA LINHA - Adicione esta linha aqui
+    df.dropna(subset=['STATUS'], inplace=True) # Remove linhas onde o status é vazio
+    # ==========================================================
+
     # Criação das colunas de Ano e Mês para os filtros
     df["Ano"] = df["Dt. Entrada"].dt.year
-    df["Mês"] = df["Dt. Entrada"].dt.month_name() # ex: 'January', 'February'
+    df["Mês"] = df["Dt. Entrada"].dt.month_name()  # ex: 'January', 'February'
     df["Ano"] = df["Ano"].astype(int)
-    
+
     return df
 
 df = load_data()
@@ -89,4 +94,20 @@ with col_graf2:
     st.plotly_chart(fig4, use_container_width=True)
 
 st.markdown("---")
-st.dataframe(df_filtrado) # Para ver a tabela de dados filtrados
+# --- TABELA DE DADOS COM COLUNAS SELECIONADAS ---
+st.header("📋 Tabela de Processos Filtrados")
+
+# Lista das colunas que queremos mostrar (note que usamos 'Ano', a coluna correta)
+colunas_para_exibir = [
+    'Ano', 
+    'Protocolo', 
+    'Mês', 
+    'Dt. Entrada', 
+    'STATUS', 
+    'MUNICÍPIO', 
+    'Assunto', 
+    'Origem'
+]
+
+# Filtra o dataframe para conter apenas as colunas desejadas e as exibe
+st.dataframe(df_filtrado[colunas_para_exibir]) 
