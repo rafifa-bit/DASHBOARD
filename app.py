@@ -78,3 +78,14 @@ st.plotly_chart(fig3, use_container_width=True)
 # ===============================
 st.header("📋 Tabela de Processos Filtrados")
 st.dataframe(df_filtrado[["Ano do protocolo", "Protocolo", "Mês da Entrada", "Dt. Entrada", "Status Processo"]])
+
+
+file_path = "SAGEP_PROCESSOS PAE3.xlsx"
+df = pd.read_excel(file_path, sheet_name="CONTROLE_ACOPANHAMENTO")
+
+# ADICIONE ESTAS DUAS LINHAS PARA VER AS COLUNAS
+st.write("🔍 Colunas encontradas no arquivo Excel:")
+st.write(df.columns.tolist())
+
+st.title("📊 Dashboard - Controle de Acompanhamento")
+# ... resto do seu código ...
